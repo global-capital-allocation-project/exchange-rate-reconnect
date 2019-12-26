@@ -21,3 +21,12 @@ Step 2: Run `code/Master.do`. The master file will in turn
     a) define the necessary globals 
     b) run the build file [optional, takes 15 minutes to 1 hour, comment out this line to use the prebuilt output files]
     c) run the analysis code to produce the figures and tables in the paper
+
+III. REFERENCES
+--------------
+Coppola, Antonio, Matteo Maggiori, Brent Neiman, and Jesse Schreger, “Redrawing the Map
+of Global Capital Flows: The Role of Cross-Border Financing and Tax Havens,” 2019.
+Du,Wenxin, Joanne Im, and Jesse Schreger, “The U.S. Treasury Premium,” Journal of International Economics, 2018, 112, 167–181.
+He, Zhiguo., Kelly, Bryan, Manela, Asaf, “Intermediary asset pricing: New evidence from many asset classes”. Journal of Financial Economics 2017, 126, 1–35.
+Gilchrist, Simon and Egon Zakrajšek, “Credit spreads and business cycle fluctuations,” American Economic Review, 2012, 102 (4), 1692–1720.
+Miranda-Agrippino, Silvia, Rey, H Hélène “US Monetary Policy and the Global Financial Cycle,” NBER Working Papers (No. 21722). National Bureau of Economic Research
