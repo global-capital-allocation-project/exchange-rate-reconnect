@@ -27,8 +27,11 @@ II. INSTRUCTIONS
 Step 1: Edit line 1 of `code/Load_Globals.do` so that the global variable user_dir points to your directory which contains this readme file
 
 Step 2: Run `code/Master.do`. The master file will in turn 
+
     a) define the necessary globals 
+    
     b) run the build file [optional, takes 15 minutes to 1 hour, comment out this line to use the prebuilt output files]
+    
     c) run the analysis code to produce the figures and tables in the paper
     
 
