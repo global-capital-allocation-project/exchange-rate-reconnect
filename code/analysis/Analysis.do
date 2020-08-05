@@ -77,7 +77,7 @@ graph export "$graphs/appendix/erd_bopcf_pre_4Q.eps", replace
 *************************
 *** 2a. GRAPH: Rolling 60m rsq Broad usd versus Financial factors (monthly)
 *** 2b. GRAPH: Rolling 60m rsq U.S.outflows versus Financial factors (monthly)
-*************************
+*************************x
 
 use "$user_dir/data/output/monthlymerged.dta", clear
 tsset date_m
@@ -461,7 +461,7 @@ tsline _eq2*, lcolor(red black blue) lwidth(medium medthick) lpattern(dash solid
 graph export "$graphs/bop_rolling_r2_multiple_window.eps", replace
 
 *************************
-*** 7. FIGURE & TABLE: MEESE ROGOFF SCATTER: RMSE AND PVALUE / FUNDAMENTALS INSAMPLE ROLLING 40 PERIOD RSQUARE GRAPH
+*** 7a. FIGURE & TABLE: MEESE ROGOFF SCATTER: RMSE AND PVALUE / FUNDAMENTALS INSAMPLE ROLLING 40 PERIOD RSQUARE GRAPH
 *************************
 
 foreach window of numlist 20 40 {
@@ -634,28 +634,35 @@ foreach window of numlist 20 40 {
 				drop if date >= $crisisstart & date <= $crisisend
 			}
 
-			*DIEBOLD MARIANO TEST USING 2006 onwards sample
-			cap dmariano actual forecast rw if date_q>=$mrevalstart+1, crit(MSE)
+			summ date
+			local maxdate = r(max)
+			local mrevalstart = `maxdate' - `window'
+			count if date > `mrevalstart'
+			local NQ = `r(N)'
+			di "`NQ'"
+
+			*DIEBOLD MARIANO TEST 
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MSE)
 			local s1_dm_mse_u=r(s1)
 			local p_dm_mse_u=r(p)
-			cap dmariano actual forecast rw if date_q>=$mrevalstart+1, crit(MAE)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MAE)
 			local s1_dm_mae_u=r(s1)
 			local p_dm_mae_u=r(p)
-			cap dmariano actual forecast rw if date_q>=$mrevalstart+1, crit(MSE) kernel(bartlett)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MSE) kernel(bartlett)
 			local s1_dm_mse_b=r(s1)
 			local p_dm_mse_b=r(p)
-			cap dmariano actual forecast rw if date_q>=$mrevalstart+1, crit(MAE)  kernel(bartlett)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MAE)  kernel(bartlett)
 			local s1_dm_mae_b=r(s1)
 			local p_dm_mae_b=r(p)
 			
 			foreach x in rw_mse rw_mae fcast_mse fcast_mae {
-				egen `x'_sum=sum(`x') if date_q>=$mrevalstart
+				egen `x'_sum=sum(`x') if date > `mrevalstart'
 			}
-			gen rw_rmse=(rw_mse_sum/$NQ)^(1/2)
-			gen fcast_rmse=(fcast_mse_sum/$NQ)^(1/2)
+			gen rw_rmse=(rw_mse_sum/`NQ')^(1/2)
+			gen fcast_rmse=(fcast_mse_sum/`NQ')^(1/2)
 
-			replace rw_mae=(rw_mae_sum/$NQ)
-			replace fcast_mae=(fcast_mae_sum/$NQ)
+			replace rw_mae=(rw_mae_sum/`NQ')
+			replace fcast_mae=(fcast_mae_sum/`NQ')
 
 			foreach x in fcast_rmse rw_rmse rw_mae fcast_mae {
 				summ `x', detail
@@ -694,6 +701,7 @@ foreach window of numlist 20 40 {
 			replace RW=`rw_mae_temp' if var1=="MAE"
 			gen ratio=Forecast/RW
 			export excel using "$regs/mr_`lhs'_`rhs_filename'_`curr'_eval_`exclusion'.xlsx", firstrow(variables) replace
+			save "$regs/mr_`lhs'_`rhs_filename'_eval_`exclusion'.dta", replace emptyok
 		}
 	}
 	restore
@@ -814,6 +822,319 @@ sort order
 order v1 v2 v6 v4 v3 v5
 drop order
 outsheet using "$regs/final/table2.xls", replace 
+
+*********
+*** Format results into table
+*********
+
+clear all
+* GRAPH ALL OOS RATIOS
+local lhs="d_e_eq_wgt"
+local rhslist ""f_B_x_Om_i_ni" "pi_q_diff dy_q_diff" "pi_q_diff dc_q_diff" "pi_q_diff y_gap_diff" "L_i_diff""
+
+foreach rhs of local rhslist {
+	foreach exclusion in "allperiods" "excrisis" {
+		local rhs = subinstr("`rhs'"," ","_",.)
+		local rhs = subinstr("`rhs'",".","_",.)
+		append using "$regs/mr_`lhs'_`rhs'_eval_`exclusion'.dta"
+		if "`rhs'"=="f_B_x_Om_i_ni" & "`exclusion'" == "allperiods" {
+			gen model = "`rhs'"
+			gen exclusion = "`exclusion'"
+		}
+		replace model = "`rhs'" if missing(model)
+		replace exclusion = "`exclusion'" if missing(exclusion)
+	}
+}
+gen col = exclusion + "_" + var1
+keep col pval ratio model 
+rename (pval ratio) (num_pval num_ratio)
+reshape long num_ , i(model col) j(val) string
+reshape wide num, i(model val) j(col) string
+rename num_* *
+gsort model -val 
+export excel using "$regs/mr_summary_risk_quarterly_macro.xlsx", firstrow(variables) replace
+
+*************************
+*** 7b. FIGURE & TABLE: MEESE ROGOFF SCATTER: RMSE AND PVALUE / FUNDAMENTALS INSAMPLE ROLLING 40 PERIOD RSQUARE GRAPH
+*************************
+
+foreach window of numlist 20 48 {
+
+	local numyears = `window'/4
+
+	*CLEAR OLD RESULTS
+	cap erase "$regs/unformatted/`lhs'_riskquarterly_insample_`numyears'.xls"
+	cap erase "$regs/unformatted/`lhs'_riskquarterly_insample_`numyears'.txt"
+	cap erase "$regs/unformatted/`lhs'_riskquarterly_insample_pre_`numyears'.xls"
+	cap erase "$regs/unformatted/`lhs'_riskquarterly_insample_pre_`numyears'.txt"
+
+	*DEFINE WHAT EXCHANGE RATE TO FORECAST, AND WHAT SET OF RHS VARIABLES
+	local lhs="d_e_eq_wgt"
+	local curr="USD"
+	local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+
+	use "$user_dir/data/output/allmerged.dta", clear
+	rename int_value_weighted_inve hkm
+	rename d_treasbasis d_dis
+	tsset cid date_q
+	preserve
+
+	*ESTIMATE ROLLING PARAMATERS, SAVE DOWN
+	*NB: Code works for only up to 4 RHS variables. Extend code if more.
+	foreach rhs of local rhslist {
+		restore, preserve
+		local rhs_filename = subinstr("`rhs'"," ","_",.)
+		local rhs_filename = subinstr("`rhs_filename'",".","_",.)
+		display "filename suffix is `rhs_filename'"
+		local var_a : word 1 of `rhs'
+		local var_b : word 2 of `rhs'
+		local var_c : word 3 of `rhs'
+		local var_d : word 4 of `rhs'
+		display "Var 1 is `var_a'"
+		display "Var 2 is `var_b'"
+		display "Var 3 is `var_c'"
+		display "Var 4 is `var_d'"
+		keep if depvar=="`curr'"
+		tsset date_q 
+		if "`rhs'" == "d_ln_vxo" {
+			keep if date_q>=$mrstart_macro
+		}
+		else {
+			keep if date_q>=$mrstart_macro & date_q <= $mrend
+		}
+		
+		reg `lhs' `rhs' if date_q>=$startq & date_q<=$endq, r
+		outreg2 using "$regs/unformatted/`lhs'_riskquarterly_insample_`numyears'.xls", auto(2)
+		reg `lhs' `rhs' if date_q<$startq & date_q>=tq(1977q1), r
+		outreg2 using "$regs/unformatted/`lhs'_riskquarterly_insample_pre_`numyears'.xls", auto(2)
+
+		* Rolling estimates including crisis
+		rolling _b _se r2=e(r2), window(`window') clear : reg `lhs' `rhs', r
+		
+		gen df = _n + $burnin - 2
+		merge 1:1 df using "$user_dir/data/raw/ttable/ttable.dta", keep(3) nogen
+
+		gen _b_`var_a'_95plus= _b_`var_a' + tinv*_se_`var_a'
+		gen _b_`var_a'_95minus= _b_`var_a' - tinv*_se_`var_a'
+		if "`var_b'" != "" {
+			gen _b_`var_b'_95plus= _b_`var_b' + tinv*_se_`var_b'
+			gen _b_`var_b'_95minus= _b_`var_b' - tinv*_se_`var_b'
+		}
+		if "`var_c'" != "" {
+			gen _b_`var_c'_95plus= _b_`var_c' + tinv*_se_`var_c'
+			gen _b_`var_c'_95minus= _b_`var_c' - tinv*_se_`var_c'
+		}
+		if "`var_d'" != "" {
+			gen _b_`var_d'_95plus= _b_`var_d' + tinv*_se_`var_d'
+			gen _b_`var_d'_95minus= _b_`var_d' - tinv*_se_`var_d'
+		}
+		* Check to see whether we are using 1-4 RHS variables
+		if "`var_b'" == "" {
+			save "$fcast/`lhs'_`rhs_filename'_`curr'.dta", replace
+		}
+		else if "`var_c'" == "" {
+			save "$fcast/`lhs'_`rhs_filename'_`curr'.dta", replace
+		}
+		else if "`var_d'" == "" {
+			save "$fcast/`lhs'_`rhs_filename'_`curr'.dta", replace
+		}
+		else if "`var_d'" != "" {
+			save "$fcast/`lhs'_`rhs_filename'_`curr'.dta", replace
+		}
+	}
+	restore
+
+	*USE BACKWARDLOOKING PARAMETERS AND OOS X VARS TO MAKE OOS FORECASTS
+	use "$user_dir/data/output/allmerged.dta", clear
+	tsset cid date_q
+	rename int_value_weighted_inve hkm
+	rename d_treasbasis d_dis
+	preserve
+
+	foreach exclusion in "allperiods" "excrisis" {
+		foreach rhs of local rhslist {
+			restore, preserve
+			local rhs_filename = subinstr("`rhs'"," ","_",.) 
+			local rhs_filename = subinstr("`rhs_filename'",".","_",.)
+			local var_a : word 1 of `rhs'
+			local var_b : word 2 of `rhs'
+			local var_c : word 3 of `rhs'
+			local var_d : word 4 of `rhs'
+			display "Var 1 is `var_a'"
+			display "Var 2 is `var_b'"
+			display "Var 3 is `var_c'"
+			display "Var 4 is `var_d'"
+			keep if depvar=="`curr'"
+			mmerge date_q using "$fcast/`lhs'_`rhs_filename'_`curr'.dta", umatch(end)
+			tsset date_q
+			rename _b_cons cons
+			
+			* Generate forecast versus actual
+			gen actual=f.`lhs'
+			if "`var_b'" == "" { 
+				gen forecast=cons + _b_`var_a' *f.`var_a'
+			}
+			else if "`var_c'" == "" {
+				gen forecast=cons + _b_`var_a' *f.`var_a' + _b_`var_b' *f.`var_b' 
+			}
+			else if "`var_d'" == "" {
+				gen forecast=cons + _b_`var_a' *f.`var_a' + _b_`var_b' *f.`var_b' + _b_`var_c' *f.`var_c' 
+			}
+			else if "`var_d'" != "" {
+				gen forecast=cons + _b_`var_a' *f.`var_a' + _b_`var_b' *f.`var_b' + _b_`var_c' *f.`var_c' + _b_`var_d' *f.`var_d' 
+			}	
+			gen rw=0
+			
+			* Generate forecast and rw RMSE and MAE	
+
+			gen rw_mse=actual^2
+			gen rw_mae=abs(actual)
+			gen fcast_mse=(forecast-actual)^2
+			gen fcast_mae=abs(forecast-actual)
+			
+			* Rolling $windowsize forecast 
+			sort date
+			gen roll_dm_mse_pval = .
+			gen roll_dm_mae_pval = .
+			
+			foreach measure_name in rw_mse rw_mae fcast_mse fcast_mae {
+				gen `measure_name'_sum_temp = sum(`measure_name')
+				gen `measure_name'_sum_rolling = `measure_name'_sum[_n] - `measure_name'_sum[_n-`window']
+				drop `measure_name'_sum_temp
+			}
+			
+			* Rolling $windowsize ratios
+			gen roll_ratio_rmse = (fcast_mse_sum_rolling)^(1/2)/(rw_mse_sum_rolling)^(1/2) 
+			gen roll_ratio_mae = (fcast_mae_sum_rolling)/(rw_mae_sum_rolling) 
+			drop *_sum_rolling
+			
+			keep if actual~=. & forecast~=.
+
+			* Rolling $windowsize DM p-values
+			levels date, local(datevalues)
+			foreach enddate of local datevalues {
+				quietly count if date_q > `enddate'-`window' & date_q <= `enddate' & !missing(actual) & !missing(forecast)
+				if `r(N)' == `window' {
+					cap dmariano actual forecast rw if date_q > `enddate'-`window' & date_q <= `enddate', crit(MSE) kernel(Bartlett)
+					replace roll_dm_mse_pval=r(p) if date_q == `enddate'
+					cap dmariano actual forecast rw if date_q > `enddate'-`window' & date_q <= `enddate', crit(MSE) // if missing, change kernel
+					replace roll_dm_mse_pval=r(p) if date_q == `enddate' & missing(roll_dm_mse_pval)
+					cap dmariano actual forecast rw if date_q > `enddate'-`window' & date_q <= `enddate', crit(MAE) kernel(Bartlett) 
+					replace roll_dm_mae_pval=r(p) if date_q == `enddate'
+					cap dmariano actual forecast rw if date_q > `enddate'-$mr_rollsize & date_q <= `enddate', crit(MAE) // if missing, change kernel
+					replace roll_dm_mae_pval=r(p) if date_q == `enddate' & missing(roll_dm_mae_pval)
+				}
+			}
+
+			if "`exclusion'"=="excrisis" {
+				drop if date >= $crisisstart & date <= $crisisend
+			}
+
+			summ date
+			local maxdate = r(max)
+			local mrevalstart = `maxdate' - `window'
+			count if date > `mrevalstart'
+			local NQ = `r(N)'
+			di "`NQ'"
+
+			*DIEBOLD MARIANO TEST 
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MSE)
+			local s1_dm_mse_u=r(s1)
+			local p_dm_mse_u=r(p)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MAE)
+			local s1_dm_mae_u=r(s1)
+			local p_dm_mae_u=r(p)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MSE) kernel(bartlett)
+			local s1_dm_mse_b=r(s1)
+			local p_dm_mse_b=r(p)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MAE)  kernel(bartlett)
+			local s1_dm_mae_b=r(s1)
+			local p_dm_mae_b=r(p)
+			
+			foreach x in rw_mse rw_mae fcast_mse fcast_mae {
+				egen `x'_sum=sum(`x') if date > `mrevalstart'
+			}
+			gen rw_rmse=(rw_mse_sum/`NQ')^(1/2)
+			gen fcast_rmse=(fcast_mse_sum/`NQ')^(1/2)
+
+			replace rw_mae=(rw_mae_sum/`NQ')
+			replace fcast_mae=(fcast_mae_sum/`NQ')
+
+			foreach x in fcast_rmse rw_rmse rw_mae fcast_mae {
+				summ `x', detail
+				local `x'_temp=r(p50)
+			}
+			local ratio=`fcast_rmse_temp'/`rw_rmse_temp'
+			local ratio=round(`ratio',.0001) 
+			if "`exclusion'"=="allperiods" {
+				save "$fcast/fcast_`lhs'_`rhs_filename'_`curr'.dta", replace
+			}
+			if "`exclusion'"=="allperiods" {
+				twoway (line actual date_q, lcolor(blue) lpattern(solid)) (line forecast date_q, lcolor(red) lpattern(dash)) (line rw date_q, lcolor(grey) lpattern(dash)), name("bd", replace) legend(order(1 "Actual FX" 2 "Forecast FX")) ytitle("Log Change") xtitle("") graphregion(color(white))
+				graph export  "$graphs/mr_`lhs'_`rhs_filename'_`curr'_`window'.eps", replace
+				if "`rhs_filename'"=="d_ln_vxo" {
+					twoway (line actual date_q if date_q>=$startq, lcolor(blue) lpattern(solid)) (line forecast date_q if date_q>=$startq, lcolor(red) lpattern(dash)) (line rw date_q if date_q>=$startq, lcolor(grey) lpattern(dash)), name("bd", replace) legend(order(1 "Actual FX" 2 "Forecast FX")) ytitle("Log Change") xtitle("Quarter") graphregion(color(white))
+					graph export  "$graphs/mr_`lhs'_`rhs_filename'_`curr'_`window'.eps", replace
+				}
+			}
+			clear
+			gen var1=""
+			set obs 2
+			gen S_1=.
+			gen pval=.
+			replace var1="MAE" if _n==1
+			replace var1="MSE" if _n==2
+			replace S_1=`s1_dm_mse_b' if var1=="MSE"
+			replace pval=`p_dm_mse_b' if var1=="MSE"
+			replace S_1=`s1_dm_mae_b' if var1=="MAE"
+			replace pval=`p_dm_mae_b' if var1=="MAE"
+
+			gen Forecast=.
+			gen RW=.
+			replace Forecast=`fcast_rmse_temp' if var1=="MSE"
+			replace RW=`rw_rmse_temp' if var1=="MSE"
+			replace Forecast=`fcast_mae_temp' if var1=="MAE"
+			replace RW=`rw_mae_temp' if var1=="MAE"
+			gen ratio=Forecast/RW
+			export excel using "$regs/mr_`lhs'_`rhs_filename'_`curr'_eval_`exclusion'.xlsx", firstrow(variables) replace
+			save "$regs/mr_`lhs'_`rhs_filename'_eval_`exclusion'.dta", replace emptyok
+		}
+	}
+	restore
+	clear
+}
+
+*********
+*** Format results into table
+*********
+
+clear all
+* GRAPH ALL OOS RATIOS
+local lhs="d_e_eq_wgt"
+local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+
+foreach rhs of local rhslist {
+	foreach exclusion in "allperiods" "excrisis" {
+		local rhs = subinstr("`rhs'"," ","_",.)
+		local rhs = subinstr("`rhs'",".","_",.)
+		append using "$regs/mr_`lhs'_`rhs'_eval_`exclusion'.dta"
+		if "`rhs'"=="d_ln_vxo" & "`exclusion'" == "allperiods" {
+			gen model = "`rhs'"
+			gen exclusion = "`exclusion'"
+		}
+		replace model = "`rhs'" if missing(model)
+		replace exclusion = "`exclusion'" if missing(exclusion)
+	}
+}
+gen col = exclusion + "_" + var1
+keep col pval ratio model 
+rename (pval ratio) (num_pval num_ratio)
+reshape long num_ , i(model col) j(val) string
+reshape wide num, i(model val) j(col) string
+rename num_* *
+gsort model -val 
+export excel using "$regs/mr_summary_risk_quarterly_risk.xlsx", firstrow(variables) replace
+
 
 *************************
 *** 8. FIGURE & TABLE: : MEESE ROGOFF SCATTER: RMSE AND PVALUE / ROLLING 120 PERIOD RSQUARE GRAPH
@@ -982,40 +1303,45 @@ foreach window of numlist 60 120 {
 			if "`exclusion'"=="excrisis" {
 				drop if date >= $crisisstartm & date <= $crisisendm
 			}
+			
+			summ date
+			local maxdate = r(max)
+			local mrevalstart = `maxdate' - `window'
+			count if date > `mrevalstart'
+			local NQ = `r(N)'
+			di "`NQ'"
 
-			*DIEBOLD MARIANO TEST USING 2006 onwards sample
-			cap dmariano actual forecast rw if date_m>=$mrevalstart+1, crit(MSE)
+			*DIEBOLD MARIANO TEST 
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MSE)
 			local s1_dm_mse_u=r(s1)
 			local p_dm_mse_u=r(p)
-			cap dmariano actual forecast rw if date_m>=$mrevalstart+1, crit(MAE)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MAE)
 			local s1_dm_mae_u=r(s1)
 			local p_dm_mae_u=r(p)
-			cap dmariano actual forecast rw if date_m>=$mrevalstart+1, crit(MSE) kernel(bartlett)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MSE) kernel(bartlett)
 			local s1_dm_mse_b=r(s1)
 			local p_dm_mse_b=r(p)
-			cap dmariano actual forecast rw if date_m>=$mrevalstart+1, crit(MAE)  kernel(bartlett)
+			cap dmariano actual forecast rw if date > `mrevalstart', crit(MAE)  kernel(bartlett)
 			local s1_dm_mae_b=r(s1)
 			local p_dm_mae_b=r(p)
 			
 			foreach x in rw_mse rw_mae fcast_mse fcast_mae {
-				egen `x'_sum=sum(`x') if date_m>=$mrevalstart
+				egen `x'_sum=sum(`x') if date > `mrevalstart'
 			}
-			gen rw_rmse=(rw_mse_sum/$NQ)^(1/2)
-			gen fcast_rmse=(fcast_mse_sum/$NQ)^(1/2)
+			gen rw_rmse=(rw_mse_sum/`NQ')^(1/2)
+			gen fcast_rmse=(fcast_mse_sum/`NQ')^(1/2)
 
-			replace rw_mae=(rw_mae_sum/$NQ)
-			replace fcast_mae=(fcast_mae_sum/$NQ)
+			replace rw_mae=(rw_mae_sum/`NQ')
+			replace fcast_mae=(fcast_mae_sum/`NQ')
 
 			foreach x in fcast_rmse rw_rmse rw_mae fcast_mae {
 				summ `x', detail
 				local `x'_temp=r(p50)
 			}
 			local ratio=`fcast_rmse_temp'/`rw_rmse_temp'
-			local ratio=round(`ratio',.0001) 
+			local ratio=round(`ratio',.0001)
 			if "`exclusion'"=="allperiods" {
 				save "$fcast/fcast_`lhs'_`rhs_filename'_`curr'.dta", replace
-			}
-			if "`exclusion'"=="allperiods" {
 				twoway (line actual date_m, lcolor(blue) lpattern(solid)) (line forecast date_m, lcolor(red) lpattern(dash)) (line rw date_m, lcolor(grey) lpattern(dash)), name("bd", replace) legend(order(1 "Actual FX" 2 "Forecast FX")) ytitle("Log Change") xtitle("") graphregion(color(white))
 				graph export  "$graphs/mr_`lhs'_`rhs_filename'_`window'.eps", replace
 				if "`rhs_filename'"=="d_ln_vxo" {
@@ -1043,6 +1369,7 @@ foreach window of numlist 60 120 {
 			replace RW=`rw_mae_temp' if var1=="MAE"
 			gen ratio=Forecast/RW
 			export excel using "$regs/mr_`lhs'_`rhs_filename'_eval_`exclusion'.xlsx", firstrow(variables) replace
+			save "$regs/mr_`lhs'_`rhs_filename'_eval_`exclusion'.dta", replace emptyok
 		}
 	}
 	restore
@@ -1097,6 +1424,33 @@ foreach window of numlist 60 120 {
 	
 }
 
+*********
+*** Format results into table
+*********
+
+clear all
+* GRAPH ALL OOS RATIOS
+local lhs="d_log_s_eq_wgt"
+local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+foreach rhs of local rhslist {
+	foreach exclusion in "allperiods" "excrisis" {
+		append using "$regs/mr_`lhs'_`rhs'_eval_`exclusion'.dta"
+		if "`rhs'"=="d_ln_vxo" & "`exclusion'" == "allperiods" {
+			gen model = "`rhs'"
+			gen exclusion = "`exclusion'"
+		}
+		replace model = "`rhs'" if missing(model)
+		replace exclusion = "`exclusion'" if missing(exclusion)
+	}
+}
+gen col = exclusion + "_" + var1
+keep col pval ratio model 
+rename (pval ratio) (num_pval num_ratio)
+reshape long num_ , i(model col) j(val) string
+reshape wide num, i(model val) j(col) string
+rename num_* *
+gsort model -val 
+export excel using "$regs/mr_summary_risk_monthly.xlsx", firstrow(variables) replace
 
 *************************
 *** 9. TABLE: Compare BoP (1973-2017), BOP: 2007-2017 v Morningstar 2007-2017: results
@@ -1213,6 +1567,7 @@ if _rc==0 {
 capture confirm file "$user_dir/data/output/aggregates/split_Q_regression_plus.dta"
 if _rc==0 {
 
+	* Broad USD on flows (US domestic bond flows)
 	cap rm "$regs/final/table6.xls"
 	cap rm "$regs/final/table6.txt"
 
@@ -1226,7 +1581,35 @@ if _rc==0 {
 	reg d_e_eq_wgt f_BS_w_i_i_iUSA f_BC_w_i_i_iUSA if depvar=="USD" & date_q>=$startq, r
 	outreg2 using "$regs/final/table6.xls", auto(2)
 	cap rm "$regs/final/table6.txt"
+	
+	* US foreign bond purchases on flows (US domestic bond flows)
 
+	cap rm "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls"
+	cap rm "$regs/final/appendix/appendix_table_flows_on_flows_levels.txt"
+	
+	gen F_bet_B_Om_Om_Om_OmUSA = F_bet_B_w_i_i_iUSA + F_bet_B_w_i_ni_niUSA + F_bet_B_w_ni_i_iUSA  + F_bet_B_w_ni_ni_niUSA + F_bet_B_x_Om_Om_OmUSA 
+	gen F_B_w_Om_i_iUSA = F_B_w_i_i_iUSA + F_B_w_ni_i_iUSA
+	gen F_BS_w_Om_i_iUSA = F_BS_w_i_i_iUSA + F_BS_w_ni_i_iUSA
+	gen F_BC_w_Om_i_iUSA = F_BC_w_i_i_iUSA + F_BC_w_ni_i_iUSA
+	gen F_BO_w_Om_i_iUSA = F_BO_w_i_i_iUSA + F_BO_w_ni_i_iUSA
+	gen F_E_Om_Om_i_iUSA = f_E_w_i_i_iUSA + F_E_w_ni_i_iUSA + F_E_x_Om_i_niUSA  
+	
+	reg F_bet_B_Om_Om_Om_OmUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)
+	reg F_B_w_Om_i_iUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)
+	reg F_BS_w_Om_i_iUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)
+	reg F_BC_w_Om_i_iUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)
+	reg F_BO_w_Om_i_iUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)	
+	reg F_BO_w_Om_i_iUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)	
+	reg F_E_Om_Om_i_iUSA F_B_x_Om_i_niUSA  if depvar=="USD" & date_q>=$startq, r
+	outreg2 using "$regs/final/appendix/appendix_table_flows_on_flows_levels.xls", auto(2)	
+	cap rm "$regs/final/appendix/appendix_table_flows_on_flows_levels.txt"
+	
 }
 
 *************************
@@ -1522,5 +1905,352 @@ if _rc==0 {
 		legend(order(1 "IMF" 2 "Morningstar") rows(1))
 		graph export "$graphs/appendix/compare_imf_mstar.eps", replace
 
+}
+
+*************************
+*** A5. TABLE: ALL CURRENCY V USD ON ALL RISK FACTORS / ALL BROAD ON ALL RISK FACTORS 
+*************************
+
+*MAKE THE MATRIX OF BILATERALS
+local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+foreach rhs of local rhslist {
+	use "$user_dir/data/output/monthlymerged.dta", clear	
+	rename (d_treasbasis int_value_weighted_inve) (d_dis hkm)
+	keep if !missing(`rhs')
+	drop iso_curr
+	keep `rhs' date
+
+	merge 1:m date using "$user_dir/data/output/ER_data/bilateral_matrix_m.dta", keep(3)
+	drop _merge
+	order date `rhs'*
+	save "$user_dir/data/temp/reg_matrix.dta", replace 
+
+	forvalues i=1/3 {
+		use "$user_dir/data/temp/reg_matrix.dta", clear
+		if `i'==1 {
+			local app="_full"
+		}	
+		if `i'==2 {
+			keep if date>=$startm
+			local app="_post"
+		}	
+		if `i'==3 {
+			keep if date<$startm
+			local app="_pre"		
+		}	
+		quietly {
+			foreach x of global g10_currency {
+				reg d_e_`x'_USD `rhs', r
+				gen r2_e_`x'_USD=round(e(r2),.001)*100
+				gen beta_rhs_`x'_USD=_b[`rhs']
+				gen se_rhs_`x'_USD=_se[`rhs']				
+			}
+		}
+		keep if _n==1
+		drop d*
+		gen n=_n
+		save "$regs/matrix`app'_long.dta", replace
+		reshape long r2_e_ beta_rhs_ se_rhs_, i(n) j(pairs) str
+		split pairs, p("_")
+		rename pairs1 iso_currency_code
+		rename pairs2 base
+		save "$regs/matrix`app'_`rhs'.dta", replace
+	}
+}
+	
+foreach app in _pre _post {
+	clear all
+	local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+	foreach rhs of local rhslist {
+		append using "$regs/matrix`app'_`rhs'.dta"
+		cap gen rhstype = "`rhs'"
+		replace rhstype = "`rhs'" if missing(rhstype)
+	}
+	drop n pairs hkm base
+	order rhstype iso beta se r2 
+	sxpose, clear force
+	gen _var0=""
+	order _var0
+	replace _var0 = "rhs" if _n==1
+	replace _var0 = "ccy" if _n==2
+	replace _var0 = "beta" if _n==3
+	replace _var0 = "se" if _n==4
+	replace _var0 = "r2" if _n==5
+	export excel * using "$regs/final/appendix/allpairs`app'.xls", firstrow(varlabels) replace
+}
+
+*MAKE THE BROAD G10 ER vs RISK PANEL
+local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+foreach rhs of local rhslist {
+	use "$user_dir/data/output/monthlymerged.dta", clear	
+	rename (d_treasbasis int_value_weighted_inve) (d_dis hkm)
+	keep if !missing(`rhs')
+	drop iso_curr
+	keep `rhs' date
+
+	merge 1:m date using "$user_dir/data/output/ER_data/log_exrate_eqwgt_m.dta", keep(3)
+	drop _merge
+	order date `rhs'*
+	save "$user_dir/data/temp/reg_broad.dta", replace 
+
+	forvalues i=1/3 {
+		use "$user_dir/data/temp/reg_broad.dta", clear
+		if `i'==1 {
+			local app="_full"
+		}	
+		if `i'==2 {
+			keep if date>=$startm
+			local app="_post"
+		}	
+		if `i'==3 {
+			keep if date<$startm
+			local app="_pre"		
+		}	
+		quietly {
+			foreach x of global g10_currency {
+				reg d_log_s_eq_wgt `rhs' if iso_currency_code=="`x'", r
+				gen r2_e_`x'_broad=round(e(r2),.001)*100
+				gen beta_rhs_`x'_broad=_b[`rhs']
+				gen se_rhs_`x'_broad=_se[`rhs']				
+			}
+		}
+		keep if _n==1
+		drop d*
+		gen n=_n
+		save "$regs/broad`app'_long.dta", replace
+		reshape long r2_e_ beta_rhs_ se_rhs_, i(n) j(pairs) str
+		drop iso
+		save "$regs/broad`app'_`rhs'.dta", replace
+	}
+}
+	
+foreach app in _pre _post {
+	clear all
+	local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+	foreach rhs of local rhslist {
+		append using "$regs/broad`app'_`rhs'.dta"
+		cap gen rhstype = "`rhs'"
+		replace rhstype = "`rhs'" if missing(rhstype)
+	}
+	drop n hkm
+	order rhstype pairs beta se r2 
+	sxpose, clear force
+	gen _var0=""
+	order _var0
+	replace _var0 = "rhs" if _n==1
+	replace _var0 = "ccy" if _n==2
+	replace _var0 = "beta" if _n==3
+	replace _var0 = "se" if _n==4
+	replace _var0 = "r2" if _n==5
+	export excel * using "$regs/final/appendix/allbroad`app'.xls", firstrow(varlabels) replace
+}
+
+*** MAKE ALL THE V-SHAPED GRAPHS
+foreach base in broad USD {
+	foreach app in _pre _post {
+		clear all
+		local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
+		foreach rhs of local rhslist {
+			append using "$regs/broad`app'_`rhs'.dta"
+			append using "$regs/matrix`app'_`rhs'.dta"
+			cap gen rhstype = "`rhs'"
+			replace rhstype = "`rhs'" if missing(rhstype)
+		}
+		drop n hkm
+		order rhstype pairs beta se r2
+		drop iso base
+		replace beta_rhs_ = - beta_rhs_ if inlist(rhstype, "d_gf", "d_log_spx", "hkm")
+		split pairs, parse(_) generate(exrate_type)
+		rename (exrate_type1 exrate_type2) (currency base)
+
+		cap count if rhstype=="d_gf" & beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_gf" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_gf" & beta_rhs < 0 & base=="`base'", estopts(noconstant) range(-.08, 0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_gf" & beta_rhs > 0 & base=="`base'", estopts(noconstant) range(0, 0.1) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60)) graphregion(color(white))  ytitle("R{superscript:2}") xtitle("-{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_gf_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_gf" & base=="`base'", mlabel(currency) color(black) mlabcolor(black) xlabel(-0.1(0.05)0.1)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_gf" & beta_rhs > 0 & base=="`base'", estopts(noconstant) range(0, 0.1) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60)) graphregion(color(white))  ytitle("R{superscript:2}") xtitle("-{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_gf_`base'.eps", replace
+		}
+
+		cap count if rhstype=="d_log_spx" & beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_log_spx" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_log_spx" & beta_rhs < 0 & base=="`base'", estopts(noconstant) range(-.55, 0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_log_spx"  & beta_rhs > 0 & base=="`base'", estopts(noconstant) range(0, 0.55) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_log_spx_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_log_spx" & base=="`base'", mlabel(currency) color(black) mlabcolor(black) xlabel(-0.6(0.3)0.6)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_log_spx"  & beta_rhs > 0 & base=="`base'", estopts(noconstant) range(0, 0.55) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_log_spx_`base'.eps", replace
+		}
+
+		cap count if rhstype=="d_ln_vxo" & beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_ln_vxo" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_ln_vxo" & beta_rhs < 0 & base=="`base'",  estopts(noconstant) range(-.1, 0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_ln_vxo" & beta_rhs > 0 & base=="`base'",  estopts(noconstant)  range(0, 0.1) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_ln_vxo_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_ln_vxo" & base=="`base'", mlabel(currency) color(black) mlabcolor(black) xlabel(-0.1(0.05)0.1)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_ln_vxo" & beta_rhs > 0 & base=="`base'",  estopts(noconstant)  range(0, 0.1) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_ln_vxo_`base'.eps", replace		
+		}
+
+		cap count if rhstype=="d_ln_vxo" & beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_gz_spread" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_gz_spread" & beta_rhs < 0 & base=="`base'",  estopts(noconstant) range(-.06, 0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_gz_spread" & beta_rhs > 0 & base=="`base'",  estopts(noconstant) range(0, 0.06) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_gz_spread_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_gz_spread" & base=="`base'", mlabel(currency) color(black) mlabcolor(black) xlabel(-0.06(0.03)0.06)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_gz_spread" & beta_rhs > 0 & base=="`base'",  estopts(noconstant) range(0, 0.06) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_gz_spread_`base'.eps", replace
+		}
+
+		cap count if rhstype=="d_dis" & beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_dis" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_dis" & beta_rhs < 0 & base=="`base'", estopts(noconstant) range(-0.00125,0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_dis" & beta_rhs > 0 & base=="`base'", estopts(noconstant) range(-0, 0.00125)lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_dis_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="d_dis" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="d_dis" & beta_rhs > 0 & base=="`base'", estopts(noconstant) range(-0, 0.00125)lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_d_dis_`base'.eps", replace
+		}
+		
+		cap count if rhstype=="d_dis" & beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="hkm" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="hkm" & beta_rhs < 0 & base=="`base'", estopts(nocons) range(-0.35, 0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="hkm" & beta_rhs > 0 & base=="`base'", estopts(nocons) range(0, 0.35) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_hkm_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if rhstype=="hkm" & base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if rhstype=="hkm" & beta_rhs > 0 & base=="`base'", estopts(nocons) range(0, 0.35) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60))  graphregion(color(white))  ytitle("R{superscript:2}") xtitle("{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_hkm_`base'.eps", replace			
+		}
+	}
+}
+
+*FLOWS
+use "$user_dir/data/output/allmerged.dta", clear
+keep if iso_coun == "USA"
+keep iso_cou date f_B_x_Om_i_ni
+merge 1:m date using "$user_dir/data/output/ER_data/log_exrate_bilateral_q.dta"
+keep if _merge==3 | iso_cou == "USA"
+drop cid
+drop _merge
+merge 1:m date iso_curr using "$user_dir/data/output/ER_data/log_exrate_eqwgt_q.dta"
+keep if _merge==3 | iso_curr == "USD"
+drop _merge
+keep if !missing(f_B_x_Om_i_ni)
+save "$user_dir/data/temp/all_g10_flows.dta", replace emptyok
+
+forvalues i=1/3 {
+	use "$user_dir/data/temp/all_g10_flows.dta", clear
+	if `i'==1 {
+		local app="_full"
+	}	
+	if `i'==2 {
+		keep if date>=$startq
+		local app="_post"
+	}	
+	if `i'==3 {
+		keep if date<$startq
+		local app="_pre"		
+	}	
+	foreach x of global g10_currency {
+		if "`x'" != "USD" {
+			reg d_log_s_eq_wgt f_B_x_Om_i_ni if iso_currency_code=="`x'", r
+			gen r2_e_`x'_broad=round(e(r2),.001)*100
+			gen beta_rhs_`x'_broad=_b[f_B_x_Om_i_ni]
+			gen se_rhs_`x'_broad=_se[f_B_x_Om_i_ni]		
+			reg d_e f_B_x_Om_i_ni if iso_currency_code=="`x'", r
+			gen r2_e_`x'_bilat=round(e(r2),.001)*100
+			gen beta_rhs_`x'_bilat=_b[f_B_x_Om_i_ni]
+			gen se_rhs_`x'_bilat=_se[f_B_x_Om_i_ni]	
+		}
+	}
+	keep if _n==1
+	drop d*
+	gen n=_n
+	save "$regs/broad_bilat`app'_flows_long.dta", replace
+	reshape long r2_e_ beta_rhs_ se_rhs_, i(n) j(pairs) str
+	drop iso*
+	save "$regs/broad_bilat`app'_flows.dta", replace
+}
+
+foreach app in _pre _post {
+	clear all
+	append using "$regs/broad_bilat`app'_flows.dta"
+	drop n f_B_x lcu_ log_e
+	order pairs beta se r2 
+	split pairs, parse(_) generate(exrate_type)
+	drop pairs
+	gsort exrate_type2 exrate_type1
+	order exrate*
+	sxpose, clear force
+	gen _var0=""
+	order _var0
+	replace _var0 = "ccy" if _n==1
+	replace _var0 = "ccytype" if _n==2
+	replace _var0 = "beta" if _n==3
+	replace _var0 = "se" if _n==4
+	replace _var0 = "r2" if _n==5
+	export excel * using "$regs/final/appendix/flowbroad`app'.xls", firstrow(varlabels) replace
+}
+
+*** V-SHAPED GRAPHS
+foreach app in _pre _post {
+	clear all
+	append using "$regs/broad_bilat`app'_flows.dta"
+	drop n f_B_x lcu_ log_e
+	order pairs beta se r2 
+	split pairs, parse(_) generate(exrate_type)
+	drop pairs
+	gsort exrate_type2 exrate_type1
+	order exrate*
+	rename (exrate_type1 exrate_type2) (currency base)
+	replace base = "USD" if base=="bilat"
+	replace beta = - beta
+	foreach base in broad USD {
+		cap count if beta_rhs < 0 & base=="`base'"
+		if `r(N)' > 1 {
+			graph twoway (scatter r2_e_ beta_rhs_ if base=="`base'", mlabel(currency) color(black) mlabcolor(black)) ///
+				(lfit r2_e_ beta_rhs_ if  beta_rhs < 0 & base=="`base'", estopts(noconstant) range(-1.5, 0) lcolor(gray) lpattern(dash) leg(off)) ///
+				(lfit r2_e_ beta_rhs_ if  beta_rhs > 0 & base=="`base'", estopts(noconstant) range(0, 1.5) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60)) graphregion(color(white))  ytitle("R{superscript:2}") xtitle("-{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_flow_`base'.eps", replace
+		}
+		else {
+			graph twoway (scatter r2_e_ beta_rhs_ if base=="`base'", mlabel(currency) color(black) mlabcolor(black) xlabel(-1.5(0.5)1.5)) ///
+				(lfit r2_e_ beta_rhs_ if beta_rhs > 0 & base=="`base'", estopts(noconstant) range(0, 1.5) lcolor(gray) lpattern("dash")  leg(off)), ///
+				ylabel(0(10)60) yscale(range(0(10)60)) graphregion(color(white))  ytitle("R{superscript:2}") xtitle("-{&beta}{superscript:i}") 
+			graph export "$graphs/appendix/vshape`app'_flow_`base'.eps", replace
+		}
+	}
 }
 
