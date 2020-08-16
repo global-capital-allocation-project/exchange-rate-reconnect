@@ -1,5 +1,5 @@
 
-global user_dir "$fxp/Public_Version/Replication_Package"
+global user_dir "/Users/yourussername/Downloads/Replication_Package"
 
 *************************
 *** DIRECTORY GLOBALS

@@ -1,6 +1,6 @@
 
 *************************
-*** Replication of "Exchange Rate Reconnect" (WP 2019) 
+*** Replication of "Exchange Rate Reconnect"
 *** 	Lilley, Maggiori, Neiman, Schreger
 *************************
 
@@ -11,6 +11,10 @@
 
 *************************
 *** Instructions 
+
+Step 1: Edit line 1 of `code/Load_Globals.do` so that the global
+variable user_dir points to your directory which contains this
+readme file
 
 Step 2: Run code/Master.do. The master file will in turn
 

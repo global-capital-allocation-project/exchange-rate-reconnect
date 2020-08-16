@@ -324,6 +324,7 @@ mmerge date_q using "$user_dir/data/output/ifs/fundamentals.dta", ukeep(i_diff p
 keep if date_q>=tq(1973q1)
 duplicates drop
 tsset cid date_q 
+drop *merge*
 save "$user_dir/data/output/allmerged.dta", replace
 
 *************************
@@ -348,4 +349,6 @@ rename _merge _merge_dis
 
 tsset date_m
 keep if date_m >= tm(1977m1) & date_m <= $mrendm
+drop *merge*
+drop gf_aggripinorey spx ln_spx VXOCLS ln_vxo gz_spread ebp est_prob 
 save "$user_dir/data/output/monthlymerged.dta", replace
