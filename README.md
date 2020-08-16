@@ -60,7 +60,7 @@ Miranda-Agrippino, Silvia, and Hélène Rey, “US Monetary Policy and the Globa
 V. DATA DICTIONARY
 --------------
 
-    *** allmerged.dta
+    allmerged.dta
 
 | Variable                  | Description                                                                                                                                                                                                                                                                                                                                       |
 |-------------------------  |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  |
@@ -138,7 +138,7 @@ V. DATA DICTIONARY
 | dc_y_diff                 | Consumption growth differential (annual) between the country listed in   the field iso_country_code and the average of all G10 countries                                                                                                                                                                                                          |
 | y_gap_diff                | Output gap differential between the country listed in the field   iso_country_code and the average of all G10 countries                                                                                                                                                                                                                           |
 
-    *** monthlymerged.dta
+    monthlymerged.dta
 
 | Variable            | Description                                                                                                                                                           |
 |-------------------  |---------------------------------------------------------------------------------------------------------------------------------------------------------------------  |
@@ -152,7 +152,7 @@ V. DATA DICTIONARY
 | d_ebp               | Intermediary returns from a value-weighted portfolio of holding   companies   of New York Federal Reserve   primary dealers taken from He, Kelly and Manela   (2017)  |
 | d_treasbasis        | Change in treasury basis                                                                                                                                              |
 
-    *** global_q_regression_plus.dta
+    global_q_regression_plus.dta
 
 | Variable            | Description                                                                                                                                                                                                                              |
 |-------------------  |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  |
@@ -160,7 +160,7 @@ V. DATA DICTIONARY
 | f_B_x_Om_i_ni       | Purchases of foreign bonds as percentage of market value in prior quarter, US Dollars; Cross-border; All currencies; Source country is the United States; All destination countries. Data source is IMF BoP                              |
 | lmns_f_B_x_Om_i_ni  | Purchases of foreign bonds as percentage of market value in prior quarter, US Dollars; Cross-border; All currencies; Source country is the United States; All destination countries. Data source is US Mutual Fund universe, Morningstar |
 
-    *** split_q_regresssion_plus.dta
+    split_q_regresssion_plus.dta
 
 | Variable              | Description                                                                                                                                                                                       |
 |---------------------  |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------  |
@@ -185,7 +185,7 @@ V. DATA DICTIONARY
 | F_BO_w_ni_i_iUSA      | Domestic purchases of other bonds in the USA issued in all currencies other than the US dollar                                                                                                    |
 | F_E_x_Om_i_niUSA      | Domestic purchases of equities of US companies                                                                                                                                                    |
 
-    *** global_q_regression_plus_qtile.dta
+    global_q_regression_plus_qtile.dta
 
 | Variable            | Description                                                                                                                                                           |
 |-------------------  |---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
