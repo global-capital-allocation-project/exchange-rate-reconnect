@@ -1,4 +1,4 @@
-# Replication code for Lilley, Maggiori, Neiman, Schreger: "Exchange Rate Reconnect"s
+# Replication code for Lilley, Maggiori, Neiman, Schreger: "Exchange Rate Reconnect"
 ==============
 
 I. INTRODUCTION
@@ -194,4 +194,4 @@ V. DATA DICTIONARY
 | qtile_type          | Characteristic by which the US mutual fund universe is split into quintiles                                                                                           |
 | qtile_num           | Quintile rank of subset of mutual funds                                                                                                                               |
 | f_*                 | See corresponding definition in allmerged.dta. Flow measure defined by the subset of mutual funds in that quintile.                                                   |
-s
+
