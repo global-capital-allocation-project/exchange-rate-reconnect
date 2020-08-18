@@ -245,27 +245,18 @@ restore
 	
 * Treasury Premium DIS
 use "$user_dir/data/raw/treasury_basis/CIP_data.dta", clear
-replace group="g11" if currency=="DKK"
-keep if group=="g10" & tenor=="1y" 
-drop if missing(cip_govt)
-gen date_m=mofd(date)
-format date_m %tm
-gen date_q=qofd(date)
-format date_q %tq
-bysort date_m currency (date): keep if _n==_N // keeps only last nonmissing day within month.
-collapse (mean) cip_govt, by(date_m date_q)
 preserve
 	order date_m cip_govt
 	tsset date_m
-	gen d_treasbasis = cip_govt-L.cip_govt
-	keep date_m d_treasbasis
+	gen d_treasurypremium = cip_govt-L.cip_govt
+	keep date_m d_treasurypremium
 	save "$user_dir/data/temp/intermediate/dis_m.dta", replace emptyok
 restore
 	bysort date_q (date_m): keep if _n==_N // keeps only last day of quarter
 	order date_q cip_govt
 	tsset date_q
-	gen d_treasbasis = cip_govt-L.cip_govt
-	keep date_q d_treasbasis
+	gen d_treasurypremium = cip_govt-L.cip_govt
+	keep date_q d_treasurypremium
 	save "$user_dir/data/temp/intermediate/dis_q.dta", replace emptyok
 	
 * He Kelly Manela Value Weighted Returns

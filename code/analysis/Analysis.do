@@ -82,7 +82,7 @@ graph export "$graphs/appendix/erd_bopcf_pre_4Q.eps", replace
 use "$user_dir/data/output/monthlymerged.dta", clear
 tsset date_m
 rename int_value_weighted_inve hkm
-rename d_treasbasis d_dis
+rename d_treasurypremium d_dis
 
 cap erase "$regs/monthly_riskfactors.xls"
 cap erase "$regs/monthly_riskfactors.txt"
@@ -198,7 +198,7 @@ foreach window of numlist 20 40 {
 	use "$user_dir/data/output/allmerged.dta", clear
 	local lhs="d_e_eq_wgt"
 	local curr="USD"
-	local rhslist  ""f_B_x_Om_i_ni" "d_ln_vxo" "d_log_spx" "d_gz_spread" "d_treasbasis" "int_value_weighted_inve" "d_gf""
+	local rhslist  ""f_B_x_Om_i_ni" "d_ln_vxo" "d_log_spx" "d_gz_spread" "d_treasurypremium" "int_value_weighted_inve" "d_gf""
 	foreach exclusion in "allperiods" {
 
 		foreach rhs of local rhslist {
@@ -226,7 +226,7 @@ foreach window of numlist 20 40 {
 			}
 		}
 
-		twoway (line f_B_x_Om_i_ni end, lcolor(black) lwidth(medthick)) (line d_ln_vxo end, lcolor(dkorange) lpattern("dash")) (line d_treasbasis end, lcolor(forest_green) lpattern("shortdash")) ///
+		twoway (line f_B_x_Om_i_ni end, lcolor(black) lwidth(medthick)) (line d_ln_vxo end, lcolor(dkorange) lpattern("dash")) (line d_treasurypremium end, lcolor(forest_green) lpattern("shortdash")) ///
 			(line d_gz_spread end, lcolor(blue) lpattern("dash_dot")) (line d_log_spx end, lcolor(ltblue) lpattern("longdash")) (line int_value_weighted_inve end, lcolor(purple) lpattern("dot")) /// 
 			(line d_gf end, lcolor(sienna) lpattern("shortdash_dot")), ///
 			graphregion(color(white)) xtitle("") ytitle("R{superscript:2}: rolling `years'Y window") yscale(range(0(0.1)0.6)) ///
@@ -235,7 +235,7 @@ foreach window of numlist 20 40 {
 
 		local lhs="f_B_x_Om_i_ni"
 		local curr="USD"
-		local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_treasbasis" "int_value_weighted_inve" "d_gf""
+		local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_treasurypremium" "int_value_weighted_inve" "d_gf""
 
 		foreach rhs of local rhslist {
 			use "$user_dir/data/output/allmerged.dta", clear
@@ -262,7 +262,7 @@ foreach window of numlist 20 40 {
 			}
 		}
 
-		twoway (line d_ln_vxo end, lcolor(orange) lpattern("dash")) (line d_treasbasis end, lcolor(forest_green) lpattern("shortdash")) (line d_gz_spread end, lcolor(blue) lpattern("dash_dot")) ///
+		twoway (line d_ln_vxo end, lcolor(orange) lpattern("dash")) (line d_treasurypremium end, lcolor(forest_green) lpattern("shortdash")) (line d_gz_spread end, lcolor(blue) lpattern("dash_dot")) ///
 			(line d_log_spx end, lcolor(ltblue) lpattern("longdash")) (line int_value_weighted_inve end, lcolor(purple) lpattern("dot")) (line d_gf end, lcolor(sienna) lpattern("shortdash_dot")) ///
 			, graphregion(color(white)) xtitle("") ytitle("R{superscript:2}: rolling `years'Y window") ///
 			legend(order(6 "Global Return Factor" 3 "GZ Spread" 1 "VXO" 4 "S&P500" 2 "Treasury Premium"  5 "Intermediaries") rows(2) size(3) region(lstyle(none) col(white))) ///
@@ -875,7 +875,7 @@ foreach window of numlist 20 48 {
 
 	use "$user_dir/data/output/allmerged.dta", clear
 	rename int_value_weighted_inve hkm
-	rename d_treasbasis d_dis
+	rename d_treasurypremium d_dis
 	tsset cid date_q
 	preserve
 
@@ -948,7 +948,7 @@ foreach window of numlist 20 48 {
 	use "$user_dir/data/output/allmerged.dta", clear
 	tsset cid date_q
 	rename int_value_weighted_inve hkm
-	rename d_treasbasis d_dis
+	rename d_treasurypremium d_dis
 	preserve
 
 	foreach exclusion in "allperiods" "excrisis" {
@@ -1157,7 +1157,7 @@ foreach window of numlist 60 120 {
 	use "$user_dir/data/output/monthlymerged.dta", clear
 	tsset date_m
 	rename int_value_weighted_inve hkm
-	rename d_treasbasis d_dis
+	rename d_treasurypremium d_dis
 	preserve
 
 	*ESTIMATE ROLLING PARAMATERS, SAVE DOWN
@@ -1223,7 +1223,7 @@ foreach window of numlist 60 120 {
 	use "$user_dir/data/output/monthlymerged.dta", clear
 	tsset date_m
 	rename int_value_weighted_inve hkm
-	rename d_treasbasis d_dis
+	rename d_treasurypremium d_dis
 	preserve
 
 	foreach exclusion in "allperiods" "excrisis" {
@@ -1915,7 +1915,7 @@ if _rc==0 {
 local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
 foreach rhs of local rhslist {
 	use "$user_dir/data/output/monthlymerged.dta", clear	
-	rename (d_treasbasis int_value_weighted_inve) (d_dis hkm)
+	rename (d_treasurypremium int_value_weighted_inve) (d_dis hkm)
 	keep if !missing(`rhs')
 	drop iso_curr
 	keep `rhs' date
@@ -1983,7 +1983,7 @@ foreach app in _pre _post {
 local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
 foreach rhs of local rhslist {
 	use "$user_dir/data/output/monthlymerged.dta", clear	
-	rename (d_treasbasis int_value_weighted_inve) (d_dis hkm)
+	rename (d_treasurypremium int_value_weighted_inve) (d_dis hkm)
 	keep if !missing(`rhs')
 	drop iso_curr
 	keep `rhs' date
