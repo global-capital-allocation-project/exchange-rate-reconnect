@@ -1842,7 +1842,7 @@ if _rc==0 {
 ****************************************************************************
 
 *************************
-*** A1&2: FIGURE: KEY RESULTS FOR 4Q HORIZON
+*** A1&2: FIGURE: RESULTS FOR 4Q HORIZON
 *************************
 
 use if depvar=="USD" using "$user_dir/data/output/allmerged.dta", clear
@@ -1911,7 +1911,7 @@ if _rc==0 {
 *** A5. TABLE: ALL CURRENCY V USD ON ALL RISK FACTORS / ALL BROAD ON ALL RISK FACTORS 
 *************************
 
-*MAKE THE MATRIX OF BILATERALS
+* MAKE THE MATRIX OF BILATERALS
 local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
 foreach rhs of local rhslist {
 	use "$user_dir/data/output/monthlymerged.dta", clear	
@@ -1979,7 +1979,7 @@ foreach app in _pre _post {
 	export excel * using "$regs/final/appendix/allpairs`app'.xls", firstrow(varlabels) replace
 }
 
-*MAKE THE BROAD G10 ER vs RISK PANEL
+* MAKE THE BROAD G10 ER vs RISK PANEL
 local rhslist ""d_ln_vxo" "d_log_spx" "d_gz_spread" "d_gf" "d_dis" "hkm""
 foreach rhs of local rhslist {
 	use "$user_dir/data/output/monthlymerged.dta", clear	
@@ -2045,7 +2045,7 @@ foreach app in _pre _post {
 	export excel * using "$regs/final/appendix/allbroad`app'.xls", firstrow(varlabels) replace
 }
 
-*** MAKE ALL THE V-SHAPED GRAPHS
+*** REGS UNDERLYING FIGS A.7 AND A.8
 foreach base in broad USD {
 	foreach app in _pre _post {
 		clear all
@@ -2155,7 +2155,7 @@ foreach base in broad USD {
 	}
 }
 
-*FLOWS
+*REGS UNDERLYING FIGS A.7 & A.8
 use "$user_dir/data/output/allmerged.dta", clear
 keep if iso_coun == "USA"
 keep iso_cou date f_B_x_Om_i_ni
@@ -2223,7 +2223,7 @@ foreach app in _pre _post {
 	export excel * using "$regs/final/appendix/flowbroad`app'.xls", firstrow(varlabels) replace
 }
 
-*** V-SHAPED GRAPHS
+*** DRAW FIGS A.7 AND A.8
 foreach app in _pre _post {
 	clear all
 	append using "$regs/broad_bilat`app'_flows.dta"
